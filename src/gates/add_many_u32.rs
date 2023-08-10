@@ -1,7 +1,7 @@
+use alloc::boxed::Box;
 use alloc::format;
-use alloc::string::{String, ToString};
+use alloc::string::String;
 use alloc::vec::Vec;
-use plonky2::util::serialization::{Buffer, IoResult, Read, Write};
 use core::marker::PhantomData;
 
 use itertools::unfold;
@@ -11,7 +11,7 @@ use plonky2::gates::gate::Gate;
 use plonky2::gates::util::StridedConstraintConsumer;
 use plonky2::hash::hash_types::RichField;
 use plonky2::iop::ext_target::ExtensionTarget;
-use plonky2::iop::generator::{GeneratedValues, SimpleGenerator, WitnessGeneratorRef};
+use plonky2::iop::generator::{GeneratedValues, SimpleGenerator, WitnessGenerator};
 use plonky2::iop::target::Target;
 use plonky2::iop::wire::Wire;
 use plonky2::iop::witness::{PartitionWitness, Witness, WitnessWrite};
@@ -91,16 +91,16 @@ impl<F: RichField + Extendable<D>, const D: usize> Gate<F, D> for U32AddManyGate
         format!("{self:?}")
     }
 
-    fn serialize(&self, dst: &mut Vec<u8>) -> IoResult<()> {
-        dst.write_usize(self.num_addends)?;
-        dst.write_usize(self.num_ops)
-    }
+    // fn serialize(&self, dst: &mut Vec<u8>) -> IoResult<()> {
+    //     dst.write_usize(self.num_addends)?;
+    //     dst.write_usize(self.num_ops)
+    // }
 
-    fn deserialize(src: &mut Buffer) -> IoResult<Self> {
-        let num_addends = src.read_usize()?;
-        let num_ops = src.read_usize()?;
-        Ok(Self { num_addends, num_ops, _phantom: PhantomData })
-    }
+    // fn deserialize(src: &mut Buffer) -> IoResult<Self> {
+    //     let num_addends = src.read_usize()?;
+    //     let num_ops = src.read_usize()?;
+    //     Ok(Self { num_addends, num_ops, _phantom: PhantomData })
+    // }
 
     fn eval_unfiltered(&self, vars: EvaluationVars<F, D>) -> Vec<F::Extension> {
         let mut constraints = Vec::with_capacity(self.num_constraints());
@@ -247,20 +247,21 @@ impl<F: RichField + Extendable<D>, const D: usize> Gate<F, D> for U32AddManyGate
         constraints
     }
 
-    fn generators(&self, row: usize, _local_constants: &[F]) -> Vec<WitnessGeneratorRef<F>> {
-        (0..self.num_ops)
-            .map(|i| {
-                WitnessGeneratorRef::new(
-                    U32AddManyGenerator {
-                        gate: *self,
-                        row,
-                        i,
-                        _phantom: PhantomData,
-                    }
-                    .adapter(),
-                )
-            })
-            .collect()
+    fn generators(&self, _row: usize, _local_constants: &[F]) -> Vec<Box<dyn WitnessGenerator<F>>> {
+        todo!()
+        // (0..self.num_ops)
+        //     .map(|i| {
+        //         Box::new(
+        //             U32AddManyGenerator {
+        //                 gate: *self,
+        //                 row,
+        //                 i,
+        //                 _phantom: PhantomData,
+        //             }
+        //             .adapter(),
+        //         )
+        //     })
+        //     .collect::<Vec<_>>()
     }
 
     fn num_wires(&self) -> usize {
@@ -291,22 +292,22 @@ struct U32AddManyGenerator<F: RichField + Extendable<D>, const D: usize> {
 impl<F: RichField + Extendable<D>, const D: usize> SimpleGenerator<F>
     for U32AddManyGenerator<F, D>
 {
-    fn id(&self) -> String {
-        "U32AddManyGenerator".to_string()
-    }
+    // fn id(&self) -> String {
+    //     "U32AddManyGenerator".to_string()
+    // }
 
-    fn serialize(&self, dst: &mut Vec<u8>) -> IoResult<()> {
-        self.gate.serialize(dst)?;
-        dst.write_usize(self.row)?;
-        dst.write_usize(self.i)
-    }
+    // fn serialize(&self, dst: &mut Vec<u8>) -> IoResult<()> {
+    //     self.gate.serialize(dst)?;
+    //     dst.write_usize(self.row)?;
+    //     dst.write_usize(self.i)
+    // }
 
-    fn deserialize(src: &mut Buffer) -> IoResult<Self> {
-        let gate = U32AddManyGate::deserialize(src)?;
-        let row = src.read_usize()?;
-        let i = src.read_usize()?;
-        Ok(Self { gate, row, i, _phantom: PhantomData })
-    }
+    // fn deserialize(src: &mut Buffer) -> IoResult<Self> {
+    //     let gate = U32AddManyGate::deserialize(src)?;
+    //     let row = src.read_usize()?;
+    //     let i = src.read_usize()?;
+    //     Ok(Self { gate, row, i, _phantom: PhantomData })
+    // }
 
     fn dependencies(&self) -> Vec<Target> {
         let local_target = |column| Target::wire(self.row, column);
